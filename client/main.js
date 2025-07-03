@@ -25,7 +25,7 @@ const useLSTasks = (actionType, obj) => {
 let tasks = [
   {
     title: "Example task title",
-    desc: "Lorem ipsum dolor sit amet consectetur adipisicing elit.",
+    desc: "Lorem ipsum dolor sit amet.",
     id: 1,
     isArchived: false,
     completed: false,
@@ -94,22 +94,14 @@ function writeToDoc() {
       <div class="border p-2 rounded border-slate-400">
         <p class="font-bold text-lg ${task.completed ? "line-through" : ""}">${task.title}</p>
         <p class="text-sm text-slate-400 mb-2">${task.desc}</p>
-        <button 
-          onclick="changeStatus(${task.id}, 'completed')"
-          ${task.completed ? "disabled" : ""} 
-          class="bg-slate-600 text-white px-2 py-1 rounded text-sm">
-            ${task.completed ? "Completed" : "Complete"}
+        <button onclick="changeStatus(${task.id}, 'completed')" ${task.completed ? "disabled" : ""} class="bg-slate-600 text-white px-2 py-1 rounded text-sm">
+          ${task.completed ? "Completed" : "Complete"}
         </button>
-        <button 
-          onclick="deleteTask(${task.id})"
-          class="bg-red-400 text-white px-2 py-1 rounded text-sm">
-            Delete
+        <button onclick="deleteTask(${task.id})" class="bg-red-400 text-white px-2 py-1 rounded text-sm">Delete</button>
+        <button onclick="changeStatus(${task.id}, 'isArchived')" class="bg-indigo-400 text-white px-2 py-1 rounded text-sm">
+          ${task.isArchived ? "Unarchive" : "Archive"}
         </button>
-        <button 
-          onclick="changeStatus(${task.id}, 'isArchived')"
-          class="bg-indigo-400 text-white px-2 py-1 rounded text-sm">
-            ${task.isArchived ? "Unarchive" : "Archive"}
-        </button>
+        <button onclick="editTask(${task.id})" class="bg-yellow-500 text-white px-2 py-1 rounded text-sm">Edit</button>
       </div>
     `;
   });
@@ -118,22 +110,40 @@ function writeToDoc() {
 form.addEventListener("submit", (e) => {
   e.preventDefault();
 
-  tasks.push({
-    title: e.target.title.value,
-    desc: e.target.desc.value,
-    id: tasks.length + 1,
-    completed: false,
-    isArchived: false,
-  });
-  writeToDoc();
-  useLSTasks(actionTypes.set, tasks);
-  modal.classList.add("hidden");
+  const mode = form.dataset.mode;
+  const id = parseInt(e.target.id.value);
+
+  if (mode === "edit") {
+    tasks = tasks.map((task) => {
+      if (task.id === id) {
+        return {
+          ...task,
+          title: e.target.title.value,
+          desc: e.target.desc.value,
+        };
+      }
+      return task;
+    });
+  } else {
+    tasks.push({
+      title: e.target.title.value,
+      desc: e.target.desc.value,
+      id: tasks.length ? Math.max(...tasks.map((t) => t.id)) + 1 : 1,
+      completed: false,
+      isArchived: false,
+    });
+  }
+
   form.reset();
+  form.dataset.mode = "add";
+  useLSTasks(actionTypes.set, tasks);
+  writeToDoc();
+  modal.classList.add("hidden");
 });
 
 function changeStatus(taskId, key) {
   tasks = tasks.map((task) => {
-    if (task.id == taskId) {
+    if (task.id === taskId) {
       task = {
         ...task,
         [key]: key === "isArchived" ? !task.isArchived : true,
@@ -142,22 +152,38 @@ function changeStatus(taskId, key) {
     return task;
   });
 
-  writeToDoc();
   useLSTasks(actionTypes.set, tasks);
+  writeToDoc();
 }
 
 function deleteTask(taskId) {
   if (confirm("Are you sure to delete this task?")) {
     tasks = tasks.filter((task) => task.id !== taskId);
-    writeToDoc();
     useLSTasks(actionTypes.set, tasks);
+    writeToDoc();
   }
 }
 
+function editTask(taskId) {
+  const task = tasks.find((t) => t.id === taskId);
+  if (!task) return;
+
+  form.title.value = task.title;
+  form.desc.value = task.desc;
+  form.id.value = task.id;
+
+  form.dataset.mode = "edit";
+  modal.classList.remove("hidden");
+}
+
 modalOpenBtn.addEventListener("click", () => {
+  form.reset();
+  form.dataset.mode = "add";
   modal.classList.remove("hidden");
 });
 
 modal.querySelector("#modal-close").addEventListener("click", () => {
   modal.classList.add("hidden");
+  form.reset();
+  form.dataset.mode = "add";
 });
